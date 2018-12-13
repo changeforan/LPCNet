@@ -41,13 +41,21 @@ embed_size = 128
 pcm_levels = 2**pcm_bits
 
 class Sparsify(Callback):
-    def __init__(self, t_start, t_end, interval, density):
+    def __init__(self, t_start, t_end, interval, density, original_model=None):
         super(Sparsify, self).__init__()
         self.batch = 0
         self.t_start = t_start
         self.t_end = t_end
         self.interval = interval
         self.final_density = density
+        self.original_model = original_model
+
+    def set_model(self, model):
+        if self.original_model is not None:
+            self.model = self.original_model
+        else:
+            self.model = model
+
 
     def on_batch_end(self, batch, logs=None):
         #print("batch number", self.batch)
