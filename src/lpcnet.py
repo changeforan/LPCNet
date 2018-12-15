@@ -41,21 +41,14 @@ embed_size = 128
 pcm_levels = 2**pcm_bits
 
 class Sparsify(Callback):
-    def __init__(self, t_start, t_end, interval, density, original_model=None):
+    def __init__(self, t_start, t_end, interval, density, multi_gpu=False):
         super(Sparsify, self).__init__()
         self.batch = 0
         self.t_start = t_start
         self.t_end = t_end
         self.interval = interval
         self.final_density = density
-        self.original_model = original_model
-
-    def set_model(self, model):
-        if self.original_model is not None:
-            self.model = self.original_model
-        else:
-            self.model = model
-
+        self.multi_gpu = multi_gpu
 
     def on_batch_end(self, batch, logs=None):
         #print("batch number", self.batch)
@@ -65,7 +58,10 @@ class Sparsify(Callback):
             pass
         else:
             #print("constrain");
-            layer = self.model.get_layer('gru_a')
+            if self.multi_gpu:
+                layer = self.model.get_layer('model_1').get_layer('gru_a')
+            else:
+                layer = self.model.get_layer('gru_a')
             w = layer.get_weights()
             p = w[1]
             nb = p.shape[1]//p.shape[0]
@@ -85,7 +81,7 @@ class Sparsify(Callback):
                 S=np.sum(L*L, axis=-1)
                 SS=np.sort(np.reshape(S, (-1,)))
                 thresh = SS[round(N*N//16*(1-density))]
-                mask = (S>=thresh).astype('float32');
+                mask = (S>=thresh).astype('float32')
                 mask = np.repeat(mask, 16, axis=1)
                 mask = np.minimum(1, mask + np.diag(np.ones((N,))))
                 mask = np.transpose(mask, (1, 0))
